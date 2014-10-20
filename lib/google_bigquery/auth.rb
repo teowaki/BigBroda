@@ -12,8 +12,8 @@ module GoogleBigquery
 
     def authorize
       @client = Google::APIClient.new(application_name: "BigBroda", application_version: GoogleBigquery::VERSION )
-      @client.authorization = @asserter.authorize
       @client.retries = @config.retries.to_i if @config.retries.to_i > 1
+      client_authorize
       @api = @client.discovered_api('bigquery', 'v2')
       self.class.api = @api
       self.class.client = @client
@@ -21,6 +21,17 @@ module GoogleBigquery
 
     def self.authorized?
       client.present?
+    end
+
+    private
+    def client_authorize
+      retries = @client.retries || 1
+      begin
+        @client.authorization = @asserter.authorize
+      rescue Signet::AuthorizationError
+        retries -= 1
+        retry unless retries == 0
+      end
     end
 
   end
